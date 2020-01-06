@@ -377,6 +377,8 @@ public abstract class AbstractNioChannel extends AbstractChannel {
         boolean selected = false;
         for (;;) {
             try {
+                // 调用NIO底层进行register注册
+                // register(),参数0：表示不关心任何事件，只是把channel注册到selector上
                 selectionKey = javaChannel().register(eventLoop().unwrappedSelector(), 0, this);
                 return;
             } catch (CancelledKeyException e) {
@@ -402,6 +404,7 @@ public abstract class AbstractNioChannel extends AbstractChannel {
     @Override
     protected void doBeginRead() throws Exception {
         // Channel.read() or ChannelHandlerContext.read() was called
+        // this.selectionKey: 服务端channel注册到Selector时的selectionKey
         final SelectionKey selectionKey = this.selectionKey;
         if (!selectionKey.isValid()) {
             return;
@@ -409,8 +412,15 @@ public abstract class AbstractNioChannel extends AbstractChannel {
 
         readPending = true;
 
+        // 服务端注册的时候，感兴趣的interestOps是0，所以这里的返回值是0
         final int interestOps = selectionKey.interestOps();
         if ((interestOps & readInterestOp) == 0) {
+            // 给这个selectionKey增加一个readInterestOp操作
+            // 这里的readInterestOp其实是ACCEPT事件
+            // 可以看NioServerSocketChannel的构造函数，传入的是SelectionKey.OP_ACCEPT
+
+            // 这段的意思是，在端口绑定完成之后，会触发一个channelActive事件，这个事件最终会调用到Channel的read事件，
+            // 对于服务端来说，就是可以读了。这里读的就是关注ACCEPT事件，准备接受一个新的客户端的连接
             selectionKey.interestOps(interestOps | readInterestOp);
         }
     }

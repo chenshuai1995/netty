@@ -453,6 +453,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                     case SelectStrategy.BUSY_WAIT:
                         // fall-through to SELECT since the busy-wait is not supported with NIO
 
+                        // 相当于Socket的accept操作
                     case SelectStrategy.SELECT:
                         select(wakenUp.getAndSet(false));
 
@@ -503,6 +504,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 final int ioRatio = this.ioRatio;
                 if (ioRatio == 100) {
                     try {
+                        // SELECT拿到一个客户端的socket连接后，进行处理
                         processSelectedKeys();
                     } finally {
                         // Ensure we always run tasks.
@@ -631,6 +633,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             final Object a = k.attachment();
 
+            // 处理每一个连接
             if (a instanceof AbstractNioChannel) {
                 processSelectedKey(k, (AbstractNioChannel) a);
             } else {
@@ -696,6 +699,9 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
             // to a spin loop
+            // 获取到一个ACCEPT操作，
+            // AbstractNioByteChannel是操作读写的
+            // AbstractNioMessageChannel是处理新连接进来的
             if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
                 unsafe.read();
             }
@@ -821,6 +827,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                     break;
                 }
 
+                // 2. 阻塞式select
                 int selectedKeys = selector.select(timeoutMillis);
                 selectCnt ++;
 
@@ -854,6 +861,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         selectCnt >= SELECTOR_AUTO_REBUILD_THRESHOLD) {
                     // The code exists in an extra method to ensure the method is not too big to inline as this
                     // branch is not very likely to get hit very frequently.
+                    // 3. 解决JDK空轮训的bug，重新创建一个selector，把旧的selector上的key放到新的selector上
                     selector = selectRebuildSelector(selectCnt);
                     selectCnt = 1;
                     break;

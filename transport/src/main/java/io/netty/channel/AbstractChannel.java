@@ -463,9 +463,12 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // 绑定线程
             AbstractChannel.this.eventLoop = eventLoop;
 
+            // 当前线程是event loop group（执行线程组）中的线程时
             if (eventLoop.inEventLoop()) {
+                // 真正的register
                 register0(promise);
             } else {
                 try {
@@ -494,20 +497,26 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                     return;
                 }
                 boolean firstRegistration = neverRegistered;
+                // 真正注册的方法，调用AbstractNioChannel的doRegister(),调用底层的NIO进行注册
                 doRegister();
                 neverRegistered = false;
                 registered = true;
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
+                // 调用.handler()中的自己的业务逻辑的handlerAdded
                 pipeline.invokeHandlerAddedIfNeeded();
 
                 safeSetSuccess(promise);
+                // 调用.handler()中的自己的业务逻辑的channelRegistered()
                 pipeline.fireChannelRegistered();
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.
+                // 服务启动时，isActive()是false,因此下面的fireChannelActive也是没有执行的
+                // channelActive是在端口绑定bind()的时候，进行事件传播执行的
                 if (isActive()) {
                     if (firstRegistration) {
+                        // 调用.handler()中的自己的业务逻辑的channelActive.只有在channel重来没有注册时，才会触发。
                         pipeline.fireChannelActive();
                     } else if (config().isAutoRead()) {
                         // This channel was registered before and autoRead() is set. This means we need to begin read
@@ -546,8 +555,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         "address (" + localAddress + ") anyway as requested.");
             }
 
+            // 一开是isActive返回的是false，然后经过bind()后，成为了true
             boolean wasActive = isActive();
             try {
+                // 1. NIO底层绑定端口
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
@@ -559,6 +570,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 invokeLater(new Runnable() {
                     @Override
                     public void run() {
+                        // 2. 触发channelActive的事件
+                        // 最终 调用HeadContext.channelActive
+                        // TODO ???是怎么调用到的
                         pipeline.fireChannelActive();
                     }
                 });

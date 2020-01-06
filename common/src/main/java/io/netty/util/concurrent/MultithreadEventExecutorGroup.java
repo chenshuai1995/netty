@@ -72,12 +72,17 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             throw new IllegalArgumentException(String.format("nThreads: %d (expected: > 0)", nThreads));
         }
 
+        // 1. 每个任务创建一个线程
         if (executor == null) {
+            // ThreadPerTaskExecutor
+            // 每次执行任务都会创建一个线程
+            // 这里的newDefaultThreadFactory()是指的DefaultThreadFactory
             executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
         }
 
         children = new EventExecutor[nThreads];
 
+        // 2. 把children数组里每个元素newChild（一个线程）
         for (int i = 0; i < nThreads; i ++) {
             boolean success = false;
             try {
@@ -108,6 +113,9 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
             }
         }
 
+        // 3. 线程选择器
+        // 如果数组的长度是2的幂，使用PowerOfTwoEventExecutorChooser（优化，通过 & 位运算，性能高）
+        // 否则，使用GenericEventExecutorChooser（普通，通过取模运算，性能低）
         chooser = chooserFactory.newChooser(children);
 
         final FutureListener<Object> terminationListener = new FutureListener<Object>() {

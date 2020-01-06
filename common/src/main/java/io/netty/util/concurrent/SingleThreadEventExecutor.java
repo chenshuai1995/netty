@@ -876,6 +876,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             throw new NullPointerException("task");
         }
 
+        // 当前线程是否在event loop线程中
         boolean inEventLoop = inEventLoop();
         addTask(task);
         if (!inEventLoop) {
@@ -1030,6 +1031,7 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
     private void doStartThread() {
         assert thread == null;
+        // 这里的executor就是ThreadPerTaskExecutor
         executor.execute(new Runnable() {
             @Override
             public void run() {

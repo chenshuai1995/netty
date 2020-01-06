@@ -263,9 +263,11 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             return regFuture;
         }
 
+        // feature.isDone()，说明注册完成并成功了
         if (regFuture.isDone()) {
             // At this point we know that the registration was complete and successful.
             ChannelPromise promise = channel.newPromise();
+            // 4. 绑定端口
             doBind0(regFuture, channel, localAddress, promise);
             return promise;
         } else {
@@ -295,7 +297,9 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     final ChannelFuture initAndRegister() {
         Channel channel = null;
         try {
+            // 1.创建服务端channel，底层创建socket
             channel = channelFactory.newChannel();
+            // 2.初始化服务端channel
             init(channel);
         } catch (Throwable t) {
             if (channel != null) {
@@ -308,6 +312,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             return new DefaultChannelPromise(new FailedChannel(), GlobalEventExecutor.INSTANCE).setFailure(t);
         }
 
+        // 3.注册selector：要把上面的channel注册到NioEventLoopGroup ,最终调用AbstractChannel的register方法
         ChannelFuture regFuture = config().group().register(channel);
         if (regFuture.cause() != null) {
             if (channel.isRegistered()) {
@@ -341,6 +346,8 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             @Override
             public void run() {
                 if (regFuture.isSuccess()) {
+                    // TODO 怎么找到的AbstractChannel的bind()
+                    // 这里最终调用的是AbstractChannel的bind()
                     channel.bind(localAddress, promise).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
                 } else {
                     promise.setFailure(regFuture.cause());

@@ -682,6 +682,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     private void invokeRead() {
         if (invokeHandler()) {
             try {
+                // 调用DefaultChannelPipeline的HeadContext.read()
                 ((ChannelOutboundHandler) handler()).read(this);
             } catch (Throwable t) {
                 notifyHandlerException(t);

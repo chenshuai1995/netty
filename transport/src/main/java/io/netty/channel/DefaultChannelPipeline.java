@@ -199,10 +199,13 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     public final ChannelPipeline addLast(EventExecutorGroup group, String name, ChannelHandler handler) {
         final AbstractChannelHandlerContext newCtx;
         synchronized (this) {
+            // 1. 检查是否有@shared注解，并且是否添加过
             checkMultiplicity(handler);
 
+            // 2. 创建节点
             newCtx = newContext(group, filterName(name, handler), handler);
 
+            // 3. 添加到链表中
             addLast0(newCtx);
 
             // If the registered is false it means that the channel was not registered on an eventLoop yet.
@@ -214,6 +217,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
                 return this;
             }
 
+            // 4. 回调添加完成事件
             EventExecutor executor = newCtx.executor();
             if (!executor.inEventLoop()) {
                 callHandlerAddedInEventLoop(newCtx, executor);
@@ -1407,8 +1411,11 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
+            // server启动后，没有触发channelActive事件
+            // 真正触发的是在这里，把channelActive往下传播
             ctx.fireChannelActive();
 
+            // 跟进去，最终调用的是
             readIfIsAutoRead();
         }
 
